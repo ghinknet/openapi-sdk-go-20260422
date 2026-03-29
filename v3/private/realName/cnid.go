@@ -13,32 +13,34 @@ import (
 
 // IsValidID checks whether the ID is a valid Chinese Mainland ID
 func IsValidID(idNumber string) bool {
-	if len(idNumber) != 18 {
+	runeNumber := []rune(idNumber)
+
+	if len(runeNumber) != 18 {
 		return false
 	}
 
-	for _, c := range idNumber[:17] {
+	for _, c := range runeNumber[:17] {
 		if c < '0' || c > '9' {
 			return false
 		}
 	}
 
-	lastChar := strings.ToUpper(string(idNumber[17]))
+	lastChar := strings.ToUpper(string(runeNumber[17]))
 	if lastChar != "X" && (lastChar[0] < '0' || lastChar[0] > '9') {
 		return false
 	}
 
-	year, err := strconv.Atoi(idNumber[6:10])
+	year, err := strconv.Atoi(string(runeNumber[6:10]))
 	if err != nil {
 		return false
 	}
 
-	month, err := strconv.Atoi(idNumber[10:12])
+	month, err := strconv.Atoi(string(runeNumber[10:12]))
 	if err != nil || month < 1 || month > 12 {
 		return false
 	}
 
-	day, err := strconv.Atoi(idNumber[12:14])
+	day, err := strconv.Atoi(string(runeNumber[12:14]))
 	if err != nil {
 		return false
 	}
@@ -63,13 +65,15 @@ func IsValidID(idNumber string) bool {
 	}
 
 	total := 0
-	for i, char := range idNumber[:17] {
-		num, _ := strconv.Atoi(string(char))
+	for i, char := range runeNumber[:17] {
+		num, err := strconv.Atoi(string(char))
+		if err != nil {
+			return false
+		}
 		total += num * factors[i]
 	}
 
-	remainder := total % 11
-	correctChecksum := checksumDict[remainder]
+	correctChecksum := checksumDict[total%11]
 
 	return lastChar == correctChecksum
 }
@@ -82,6 +86,9 @@ func IsValidDate(year, month, day int) bool {
 
 // VerifyCNID verifies whether the provided CNID is valid
 func VerifyCNID(c *client.Client, id string, name string) (ok bool, err error) {
+	// Pre-process ID
+	id = strings.ToLower(id)
+
 	// Check CNID format valid
 	if !IsValidID(id) {
 		return false, nil
